@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools >= 61.0.0", "oldest-supported-numpy"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seismosizer-webengine"
+version = "0.1.0"
+requires-python = ">=3.8"
+license = {text = "GPLv3"}
+description = "'Seismosizer Webengine'"
+readme = "README.md"
+authors = [
+  {name = "Hannes Vasyura-Bathke", email = "vasbath@gfz-potsdam.de"}
+]
+maintainers = [
+  {name = "Hannes Vasyura-Bathke", email = "vasbath@gfz-potsdam.de"}
+]
+keywords = ["seismology", "geodesy", "earthquake", "volcano"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: C",
+    "Operating System :: POSIX",
+    "Operating System :: MacOS"
+]
+dependencies = [
+    "numpy>=1.16.0",
+    "scipy>=1.0.0",
+    "pyrocko>=2022.06.10"
+]
+
+[project.urls]
+Home = "https://pyrocko.org/"
+GitHub = "https://github.com/hvasbath/seismosizer-webengine"
+Issues = "https://github.com/hvasbath/seismosizer-webengine/issues"
+
+[project.optional-dependencies]
+formatting = ["flake8", "black"]
+
+[tool.setuptools]
+packages=["seismosizer_webengine"]
+# package-dir = {"" = "src"}

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, Self, Union, Tuple, List
+from typing import TYPE_CHECKING, Self, Union, Tuple, List, Literal
 from uuid import UUID, uuid4
 
-from pydantic import BaseModel, Field, Literal
+from pydantic import BaseModel, Field
 from pyrocko.gf import LocalEngine
 
 from fastapi import FastAPI
@@ -17,19 +17,19 @@ if TYPE_CHECKING:
 
 
 class CommunicationTarget(BaseModel):
-    lat: float | 0.
-    lon: float | 0.
-    north_shift: float | 0.
-    east_shift: float | 0.
-    depth: float | 0.
-    elevation: float | 0.
+    lat: float = 0.
+    lon: float = 0.
+    north_shift: float = 0.
+    east_shift: float = 0.
+    depth: float = 0.
+    elevation: float = 0.
     store_id: str
     sample_rate: Union[float, None]
     azimuth: float
     dip: float
     tmin: Union[float, None]
     tmax: Union[float, None]
-    codes: Tuple[str] | ('', 'STA', '', 'Z')
+    codes: Tuple[str] = ('', 'STA', '', 'Z')
     interpolation: Literal['nearest_neighbor', 'multilinear']
     quantity: Literal[
         'displacement',
@@ -46,6 +46,7 @@ class CommunicationTarget(BaseModel):
 
     @classmethod
     def from_pyrocko(cls, target: PyrockoTarget) -> Self:
+        print(target)
         attributes = target.__dict__
         attributes.pop('_latlon')
         attributes.pop('filter')
@@ -91,7 +92,7 @@ class GFResponse(BaseModel):
 app = FastAPI()
 
 
-@app.post("/request", respone_model=GFResponse)
+@app.post("/request", response_model=GFResponse)
 async def request(request: GFRequest):
     pyrocko_request = request.to_pyrocko()
     pyrocko_response = await asyncio.to_thread(LocalEngine.process, pyrocko_request)
