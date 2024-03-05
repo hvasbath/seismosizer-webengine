@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, Self, Union, Tuple, List, Literal, Dict
 from uuid import UUID, uuid4
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 from pyrocko.gf import LocalEngine
@@ -14,8 +15,8 @@ from numpy import ndarray, array
 from pyrocko.gf import Request as PyrockoRequest
 from pyrocko.gf import Response as PyrockoResponse
 
-from pyrocko.gf.seismosizer import source_classes
-from pyrocko.gf.seismosizer import stf_classes
+from pyrocko.gf.seismosizer import source_classes, stf_classes, ProcessingStats
+from pyrocko.gf.meta import SeismosizerTrace
 
 from pyrocko.gf import Target as PyrockoTarget
 from pyrocko.gf import Source as PyrockoSource
@@ -133,7 +134,7 @@ class CommunicationSource(BaseModel):
             stf=stf, **source_attributes)
 
 
-class GFRequest(BaseModel):
+class CommunicationGFRequest(BaseModel):
     uid: UUID = Field(default_factory=uuid4)
 
     sources: list[CommunicationSource]
@@ -141,14 +142,64 @@ class GFRequest(BaseModel):
 
     @classmethod
     def from_pyrocko(cls, request: PyrockoRequest) -> Self:
-        ...
+        csources = [CommunicationSource.from_pyrocko(
+            source) for source in request.sources]
+        ctargets = [CommunicationTarget.from_pyrocko(target) for target in request.targets]
+        return cls(sources=csources, targets=ctargets)
 
     def to_pyrocko(self) -> PyrockoRequest:
-        ...
+        sources = [source.to_pyrocko() for source in self.sources]
+        targets = [target.to_pyrocko() for target in self.targets]
+        return PyrockoRequest(sources=sources, targets=targets)
 
 
-class GFResponse(BaseModel):
+class CommunicationSeismosizerTrace(BaseModel):
+
+    codes: Tuple[str, ...] = ('', 'STA', '', 'Z'),
+    data: List[float]
+    deltat: float = 1.0,
+    tmin: datetime
+        # default=Timestamp.D('1970-01-01 00:00:00'),
+        # help='time of first sample as a system timestamp [s]')
+    def from_pyrocko(cls, trace: SeismosizerTrace) -> Self:
+        pass
+    
+    def to_pyrocko(self):
+        return
+
+
+class CommunicationSeismosizerResult(BaseModel):
+    n_records_stacked: Union[int, None] = 1
+    t_stack: Union[float, None] = 0.
+
+
+class CommunicationDynamicResult(CommunicationSeismosizerResult):
+    trace = Union[CommunicationSeismosizerTrace, None]
+    n_shared_stacking: Union[int, None] = 1
+    t_optimize = Union[float, None] = 0.
+
+
+class CommunicationStaticResult(CommunicationSeismosizerResult):
+    result = Dict(str, List)
+
+
+class CommunicationProcessingStats(BaseModel):
+    
+    stats: Dict[str, Union[float, int]]
+    
+    def from_pyrocko(cls, stats: ProcessingStats) -> Self:
+        return cls(stats=stats.__dict__)
+    
+    def to_pyrocko(self) -> ProcessingStats:
+        return ProcessingStats(**self.stats)
+
+
+class CommunicationGFResponse(BaseModel):
     uid: UUID = Field(default_factory=uuid4)
+
+    request = CommunicationGFRequest
+    results_list = List[List[CommunicationSeismosizerResult]]
+    stats = CommunicationProcessingStats
 
     @classmethod
     def from_pyrocko(cls, response: PyrockoResponse) -> Self:
@@ -161,8 +212,8 @@ class GFResponse(BaseModel):
 app = FastAPI()
 
 
-@app.post("/request", response_model=GFResponse)
-async def request(request: GFRequest):
+@app.post("/request", response_model=CommunicationGFResponse)
+async def request(request: CommunicationGFRequest):
     pyrocko_request = request.to_pyrocko()
     pyrocko_response = await asyncio.to_thread(LocalEngine.process, pyrocko_request)
-    return GFResponse.from_pyrocko(pyrocko_response)
+    return CommunicationGFResponse.from_pyrocko(pyrocko_response)
